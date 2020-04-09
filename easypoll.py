@@ -19,7 +19,7 @@ Discord bot to creates polls
 
 The question must comes as first argument after the /poll
 All arguments must comes between double quotes
-You can optionnaly add choices.
+You can optionally add choices.
 
 /poll "Question"
 or
@@ -88,7 +88,7 @@ class EasyPoll(discord.Client):
             return
 
         # message comes from an user
-        if message.content.startswith("/easypoll"):
+        if message.content.startswith("/poll"):
             res = await self._send_choices(message)
             if not res:
                 await message.channel.send(self.help())
