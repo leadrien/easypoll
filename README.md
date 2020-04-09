@@ -5,7 +5,9 @@ Easypoll is a discord bot to create polls
 ## Usage
 
 The question must comes as first argument after the `/poll`
+
 All arguments must comes between double quotes
+
 You can optionally add choices.
 
 ```
@@ -28,6 +30,12 @@ cd easypoll
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
+
+The discord bot token can be stored in a `.env` file, located in the script folder.
+```
+# .env file
+DISCORD_TOKEN=my_bot_token
 ```
 
 Run with
