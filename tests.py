@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from bot import quotes_to_list, get_regional_indicator_symbol
+from easypoll import quotes_to_list, get_regional_indicator_symbol
 
 
 class Tests(TestCase):
