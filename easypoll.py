@@ -78,6 +78,8 @@ class EasyPoll(discord.Client):
 
     async def on_ready(self) -> None:
         print(f"{self.user} has connected to Discord!")
+        activity = discord.Game("/poll")
+        await self.change_presence(activity=activity)
 
     async def on_message(self, message: discord.message) -> None:
         """Every time a message is send on the server, it arrives here"""
