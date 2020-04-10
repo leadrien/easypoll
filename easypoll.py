@@ -73,7 +73,7 @@ class EasyPoll(discord.Client):
         s = "Usage:\n"
         s += '/poll "Question"\n'
         s += "Or\n"
-        s += '/poll "Question" "Choice A", "Choice B", "Choice C"...\n'
+        s += '/poll "Question" "Choice A" "Choice B" "Choice C"\n'
         return s
 
     async def on_ready(self) -> None:
