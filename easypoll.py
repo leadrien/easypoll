@@ -150,6 +150,7 @@ class EasyPoll(discord.Client):
 
 
 if __name__ == "__main__":
+    
     load_dotenv()
     token = os.getenv("DISCORD_TOKEN")
     client = EasyPoll()
