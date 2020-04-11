@@ -7,7 +7,7 @@ import re
 
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict
 
 __author__ = "Adrien Lescourt"
 __email__ = "adrien.lescourt@hesge.ch"
@@ -42,7 +42,7 @@ class Poll:
     choices: List[str]
 
     @classmethod
-    def from_str(cls, poll_str):
+    def from_str(cls, poll_str: str) -> "Poll":
         """Return a Poll object from a string that match this template:
 
         '/poll "Question comes first" "then first choice" "second choice" "third choice"'     end so on if needed
@@ -91,9 +91,8 @@ class Poll:
 class EasyPoll(discord.Client):
     """Simple discord bot that creates poll
 
-    To track the polls sent by the bot and avoid racing between poll sent and poll reaction,
-    we store the (channel_id, question) in a dict
-    Also used to retreive the choices and add as many regional emoji as needed
+    Each time a poll is send, we store it in a dict. When the bot read one of its own message, it checks
+    in the dict it the poll exists. If it does, it addthe reactions emoji to it
     """
 
     def __init__(self, **options):
@@ -101,12 +100,16 @@ class EasyPoll(discord.Client):
         self.polls: Dict[str, Poll] = {}
 
     @staticmethod
-    def help() -> str:
-        s = "Usage:\n"
-        s += '/poll "Question"\n'
-        s += "Or\n"
-        s += '/poll "Question" "Choice A" "Choice B" "Choice C"\n'
-        return s
+    def help() -> discord.Embed:
+        description = """/poll "Question"
+        Or
+        /poll "Question" "Choice A" "Choice B" "Choice C"
+        """
+        embed = discord.Embed(
+            title="Usage:", description=description, color=discord.Color.dark_red()
+        )
+        embed.set_footer(text="HEPIA powered")
+        return embed
 
     @staticmethod
     def get_poll_key(channel_id: int, question: str) -> str:
@@ -147,7 +150,7 @@ class EasyPoll(discord.Client):
             try:
                 await self.send_poll(message)
             except PollException:
-                await message.channel.send(self.help())
+                await message.channel.send(embed=self.help())
 
 
 if __name__ == "__main__":
