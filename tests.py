@@ -1,30 +1,40 @@
 from unittest import TestCase
 
-from easypoll import quotes_to_list, get_regional_indicator_symbol
+from easypoll import PollException
+from easypoll import Poll
 
 
 class Tests(TestCase):
-    def test_quotes_to_list(self):
-        s = '/poll "one two three?" "four five" "six"'
-        self.assertEqual(["one two three?", "four five", "six"], quotes_to_list(s))
+    def test_poll(self):
+        p1 = Poll("q1", ["one", "two", "three"])
+        p2 = Poll.from_str('/poll "q1" "one" "two" "three"')
+        self.assertEqual(p1, p2)
 
-        s = '/poll "Yay"'
-        self.assertEqual(["Yay"], quotes_to_list(s))
+        p1 = Poll("Yay", [])
+        p2 = Poll.from_str('/poll "Yay"')
+        self.assertEqual(p1, p2)
 
-        s = "/poll"
-        self.assertEqual([], quotes_to_list(s))
+        p1 = Poll(" ", [])
+        p2 = Poll.from_str('/poll " "')
+        self.assertEqual(p1, p2)
 
-        s = ""
-        self.assertEqual([], quotes_to_list(s))
+        p1 = Poll("", [])
+        p2 = Poll.from_str('/poll ""')
+        self.assertEqual(p1, p2)
 
-        s = '/poll "  "'
-        self.assertEqual([], quotes_to_list(s))
+        p1 = Poll("no", ["fkin", "commas", "!"])
+        p2 = Poll.from_str('/poll "no", "fkin", "commas", "!"')
+        self.assertEqual(p1, p2)
 
-        s = '/poll one two three?" "four five" "six"'
-        self.assertEqual([], quotes_to_list(s))
+        self.assertRaises(PollException, Poll.from_str, "/poll")
+        self.assertRaises(PollException, Poll.from_str, "")
+        self.assertRaises(PollException, Poll.from_str, '/poll " " "')
+        self.assertRaises(
+            PollException, Poll.from_str, '/poll one two three?" "four five" "six"'
+        )
 
     def test_get_regional_indicator_symbol(self):
-        self.assertEqual("🇦", get_regional_indicator_symbol(0))
-        self.assertEqual("🇿", get_regional_indicator_symbol(25))
-        self.assertEqual("", get_regional_indicator_symbol(26))
-        self.assertEqual("", get_regional_indicator_symbol(-1))
+        self.assertEqual("🇦", Poll.get_regional_indicator_symbol(0))
+        self.assertEqual("🇿", Poll.get_regional_indicator_symbol(25))
+        self.assertEqual("", Poll.get_regional_indicator_symbol(26))
+        self.assertEqual("", Poll.get_regional_indicator_symbol(-1))

@@ -3,15 +3,17 @@
 
 import discord
 import os
+import re
 
+from dataclasses import dataclass
 from dotenv import load_dotenv
-from typing import List, Dict, Tuple
-
+from typing import List, Dict, Tuple, Optional
 
 __author__ = "Adrien Lescourt"
 __email__ = "adrien.lescourt@hesge.ch"
 __copyright__ = "2020, HES-SO"
 __status__ = "Dev"
+__version__ = "0.2"
 
 
 """
@@ -27,33 +29,63 @@ or
 """
 
 
-def get_regional_indicator_symbol(idx: int) -> str:
-    """
-    idx=0 -> A, idx=1 -> B, etc...
-    :param idx:
-    :return:
-    """
-    if 0 <= idx < 26:
-        return chr(ord("\U0001F1E6") + idx)
-    return ""
+REGEX = re.compile(r'"(.*?)"')
 
 
-def quotes_to_list(str_with_quotes: str) -> List[str]:
-    """
-    Returns a string list from a string with multiple quotes
+class PollException(Exception):
+    pass
 
-    The list is empty if the quotes count is odd
 
-    eg.
-    '/poll "this is a test" "and it is" "working"
-    returns
-    ["this is a test", "and it is", "working"]
-    """
-    quotes_count = str_with_quotes.count('"')
-    if quotes_count == 0 or quotes_count % 2 != 0:
-        return []
+@dataclass
+class Poll:
+    question: str
+    choices: List[str]
 
-    return [stripped for s in str_with_quotes.split('"')[1:] if (stripped := s.strip())]
+    @classmethod
+    def from_str(cls, poll_str):
+        """Return a Poll object from a string that match this template:
+
+        '/poll "Question comes first" "then first choice" "second choice" "third choice"'     end so on if needed
+
+        or simpler question that need binary answer:
+        '/poll "Only the question"
+
+        Raises PollException if the double quotes count is odd
+        """
+        quotes_count = poll_str.count('"')
+        if quotes_count == 0 or quotes_count % 2 != 0:
+            raise PollException("Poll must have an even number of double quotes")
+
+        fields = re.findall(REGEX, poll_str)
+        return cls(fields[0], fields[1:] if len(fields) > 0 else [])
+
+    def to_embed(self) -> discord.Embed:
+        """Construct the nice and good looking discord Embed object that represent the poll"""
+        description = "\n".join(
+            self.get_regional_indicator_symbol(idx) + " " + choice
+            for idx, choice in enumerate(self.choices)
+        )
+        title = "📊" + self.question
+        embed = discord.Embed(
+            title=title, description=description, color=discord.Color.dark_red()
+        )
+        return embed
+
+    def reactions(self) -> List[str]:
+        """Add as many reaction as the Poll choices needs"""
+        if self.choices:
+            return [
+                self.get_regional_indicator_symbol(i) for i in range(len(self.choices))
+            ]
+        else:
+            return ["👍", "👎"]
+
+    @staticmethod
+    def get_regional_indicator_symbol(idx: int) -> str:
+        """idx=0 -> A, idx=1 -> B, ... idx=25 -> Z"""
+        if 0 <= idx < 26:
+            return chr(ord("\U0001F1E6") + idx)
+        return ""
 
 
 class EasyPoll(discord.Client):
@@ -66,7 +98,7 @@ class EasyPoll(discord.Client):
 
     def __init__(self, **options):
         super().__init__(**options)
-        self.polls: Dict[Tuple[int, str], List[str]] = {}
+        self.polls: Dict[str, Poll] = {}
 
     @staticmethod
     def help() -> str:
@@ -76,60 +108,46 @@ class EasyPoll(discord.Client):
         s += '/poll "Question" "Choice A" "Choice B" "Choice C"\n'
         return s
 
+    @staticmethod
+    def get_poll_key(channel_id: int, question: str) -> str:
+        return str(channel_id) + question
+
     async def on_ready(self) -> None:
         print(f"{self.user} has connected to Discord!")
         activity = discord.Game("/poll")
         await self.change_presence(activity=activity)
 
+    async def send_reactions(self, message: discord.message) -> None:
+        """Add the reactions to the just sent poll embed message"""
+        if not message.embeds:
+            return
+        key = self.get_poll_key(message.channel.id, message.embeds[0].title)
+        poll = self.polls.get(key)
+        if poll:
+            for reaction in poll.reactions():
+                await message.add_reaction(reaction)
+            self.polls.pop(key)
+
+    async def send_poll(self, message: discord.message) -> None:
+        """Send the embed poll to the channel"""
+        poll = Poll.from_str(message.content)
+        # TODO: find a better key... can we hide data in the embed object?
+        key = self.get_poll_key(message.channel.id, "📊" + poll.question)
+        self.polls[key] = poll
+        await message.channel.send(embed=poll.to_embed())
+
     async def on_message(self, message: discord.message) -> None:
         """Every time a message is send on the server, it arrives here"""
 
-        # message comes from the bot, we need to add the reactions to it
         if message.author == self.user:
-            await self._send_reactions(message)
+            await self.send_reactions(message)
             return
 
-        # message comes from an user
         if message.content.startswith("/poll"):
-            res = await self._send_choices(message)
-            if not res:
+            try:
+                await self.send_poll(message)
+            except PollException:
                 await message.channel.send(self.help())
-
-    async def _send_choices(self, message: discord.message) -> bool:
-        """Send the message with the question. Reactions will be added afterwards
-
-        returns if a messge has been sent
-        """
-        quotes = quotes_to_list(message.content)
-        if quotes:
-            question, *choices = quotes
-            self.polls[(message.channel.id, question)] = choices
-            response = question + " \n "
-            response += " \n ".join(
-                get_regional_indicator_symbol(idx) + choice
-                for idx, choice in enumerate(choices)
-            )
-            await message.channel.send(response)
-            return True
-        return False
-
-    async def _send_reactions(self, message: discord.message) -> bool:
-        """Send emoji reactions after it has send a message with the choices
-
-        returns if a messge has been sent
-        """
-        poll_question, *_ = message.content.split("\n")
-        key = message.channel.id, poll_question.strip()
-        if key in self.polls:
-            if self.polls[key]:
-                for idx, _ in enumerate(self.polls[key]):
-                    await message.add_reaction(get_regional_indicator_symbol(idx))
-                self.polls.pop(key)
-            else:
-                await message.add_reaction("👍")
-                await message.add_reaction("👎")
-            return True
-        return False
 
 
 if __name__ == "__main__":
