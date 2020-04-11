@@ -3,6 +3,7 @@
 
 import discord
 import os
+import random
 import re
 
 from dataclasses import dataclass
@@ -65,7 +66,7 @@ class Poll:
             self.get_regional_indicator_symbol(idx) + " " + choice
             for idx, choice in enumerate(self.choices)
         )
-        title = "📊" + self.question
+        title = "📊 " + self.question
         embed = discord.Embed(
             title=title, description=description, color=discord.Color.dark_red()
         )
@@ -91,13 +92,14 @@ class Poll:
 class EasyPoll(discord.Client):
     """Simple discord bot that creates poll
 
-    Each time a poll is send, we store it in a dict. When the bot read one of its own message, it checks
-    in the dict it the poll exists. If it does, it addthe reactions emoji to it
+    Each time a poll is send, we store it in a dict with the message nonce as key.
+    When the bot read one of its own message, it checks if the nouce is in the dict
+    If yes, it add the poll reactions emoji to the message
     """
 
     def __init__(self, **options):
         super().__init__(**options)
-        self.polls: Dict[str, Poll] = {}
+        self.polls: Dict[int, Poll] = {}
 
     @staticmethod
     def help() -> discord.Embed:
@@ -111,10 +113,6 @@ class EasyPoll(discord.Client):
         embed.set_footer(text="HEPIA powered")
         return embed
 
-    @staticmethod
-    def get_poll_key(channel_id: int, question: str) -> str:
-        return str(channel_id) + question
-
     async def on_ready(self) -> None:
         print(f"{self.user} has connected to Discord!")
         activity = discord.Game("/poll")
@@ -124,20 +122,18 @@ class EasyPoll(discord.Client):
         """Add the reactions to the just sent poll embed message"""
         if not message.embeds:
             return
-        key = self.get_poll_key(message.channel.id, message.embeds[0].title)
-        poll = self.polls.get(key)
+        poll = self.polls.get(message.nonce)
         if poll:
             for reaction in poll.reactions():
                 await message.add_reaction(reaction)
-            self.polls.pop(key)
+            self.polls.pop(message.nonce)
 
     async def send_poll(self, message: discord.message) -> None:
         """Send the embed poll to the channel"""
         poll = Poll.from_str(message.content)
-        # TODO: find a better key... can we hide data in the embed object?
-        key = self.get_poll_key(message.channel.id, "📊" + poll.question)
-        self.polls[key] = poll
-        await message.channel.send(embed=poll.to_embed())
+        nonce = random.randint(0, 1e9)
+        self.polls[nonce] = poll
+        await message.channel.send(embed=poll.to_embed(), nonce=nonce)
 
     async def on_message(self, message: discord.message) -> None:
         """Every time a message is send on the server, it arrives here"""
