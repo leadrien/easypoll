@@ -25,7 +25,7 @@ or
 Straightforward python deployment:
 
 ```
-git clone https://githepia.hesge.ch/adrienma.lescourt/easypoll
+git clone https://github.com/leadrien/easypoll.git
 cd easypoll
 python -m venv venv
 source venv/bin/activate
@@ -42,3 +42,12 @@ Run with
 ```
 python easypoll.py
 ```
+
+## Example
+
+![Easypoll](screen_1.png)
+
+
+## Credits
+
+Icon based on [Freepik from www.flaticon.com](https://www.flaticon.com/free-icon/histogram_2658175?term=histogram&page=1&position=7)

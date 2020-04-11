@@ -13,6 +13,7 @@ from typing import List, Dict
 __author__ = "Adrien Lescourt"
 __email__ = "adrien.lescourt@hesge.ch"
 __copyright__ = "2020, HES-SO"
+__license__ = "GNU GPL v3.0"
 __status__ = "Dev"
 __version__ = "0.2"
 
