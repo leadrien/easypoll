@@ -8,7 +8,7 @@ import re
 
 from dataclasses import dataclass
 from dotenv import load_dotenv
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 __author__ = "Adrien Lescourt"
 __email__ = "adrien.lescourt@hesge.ch"
@@ -61,15 +61,24 @@ class Poll:
         fields = re.findall(REGEX, poll_str)
         return cls(fields[0], fields[1:] if len(fields) > 0 else [])
 
-    def to_embed(self) -> discord.Embed:
-        """Construct the nice and good looking discord Embed object that represent the poll"""
+    def get_message(self):
+        """Get the poll question with emoji"""
+        return "📊 " + self.question
+
+    def get_embed(self) -> Optional[discord.Embed]:
+        """Construct the nice and good looking discord Embed object that represent the poll choices
+
+        returns None if there is no choice for this question (yes/no answer)
+        The reason we put answer choices in the embed but not the question: embed can not display @mentions
+        """
+        if not self.choices:
+            return None
         description = "\n".join(
             self.get_regional_indicator_symbol(idx) + " " + choice
             for idx, choice in enumerate(self.choices)
         )
-        title = "📊 " + self.question
         embed = discord.Embed(
-            title=title, description=description, color=discord.Color.dark_red()
+            description=description, color=discord.Color.dark_red()
         )
         return embed
 
@@ -121,8 +130,6 @@ class EasyPoll(discord.Client):
 
     async def send_reactions(self, message: discord.message) -> None:
         """Add the reactions to the just sent poll embed message"""
-        if not message.embeds:
-            return
         poll = self.polls.get(message.nonce)
         if poll:
             for reaction in poll.reactions():
@@ -134,7 +141,7 @@ class EasyPoll(discord.Client):
         poll = Poll.from_str(message.content)
         nonce = random.randint(0, 1e9)
         self.polls[nonce] = poll
-        await message.channel.send(embed=poll.to_embed(), nonce=nonce)
+        await message.channel.send(poll.get_message(), embed=poll.get_embed(), nonce=nonce)
 
     async def on_message(self, message: discord.message) -> None:
         """Every time a message is send on the server, it arrives here"""
