@@ -141,6 +141,7 @@ class EasyPoll(discord.Client):
         poll = Poll.from_str(message.content)
         nonce = random.randint(0, 1e9)
         self.polls[nonce] = poll
+        await message.delete()
         await message.channel.send(poll.get_message(), embed=poll.get_embed(), nonce=nonce)
 
     async def on_message(self, message: discord.message) -> None:
